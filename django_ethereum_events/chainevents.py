@@ -16,5 +16,5 @@ class AbstractEventReceiver(with_metaclass(ABCMeta)):
     """
 
     @abstractmethod
-    def save(self, decoded_event):
+    def save(self, decoded_event, blockchain_id):
         pass

@@ -1,5 +1,6 @@
 import json
 from unittest.mock import patch
+import logging
 
 from django.test import TestCase
 from eth_tester import EthereumTester, PyEVMBackend
@@ -20,22 +21,22 @@ bank_deposit_events = []
 
 
 class ClaimEventReceiver(AbstractEventReceiver):
-    def save(self, decoded_event):
+    def save(self, decoded_event, blockchain_id):
         claim_events.append(decoded_event)
 
 
 class BankWithdrawEventReceiver(AbstractEventReceiver):
-    def save(self, decoded_event):
+    def save(self, decoded_event, blockchain_id):
         bank_withdraw_events.append(decoded_event)
 
 
 class BankDepositEventReceiver(AbstractEventReceiver):
-    def save(self, decoded_event):
+    def save(self, decoded_event, blockchain_id):
         bank_deposit_events.append(decoded_event)
 
 
 class ErroneousBankDepositEventReceiver(AbstractEventReceiver):
-    def save(self, decoded_event):
+    def save(self, decoded_event, blockchain_id):
         raise ValueError
 
 
@@ -309,7 +310,10 @@ class EventListenerTestCase(TestCase):
             transact({'from': self.web3.eth.accounts[0], 'value': deposit_value})
 
         listener = EventListener(rpc_provider=self.provider)
+        logger = logging.getLogger('django_ethereum_events.event_listener')
+        logger.disabled = True
         listener.execute()
+        logger.disabled = False
 
         failed_events = FailedEventLog.objects.all()
         self.assertEqual(listener.daemon.block_number, self.web3.eth.blockNumber,
@@ -329,7 +333,7 @@ class EventListenerTestCase(TestCase):
         current = self.web3.eth.blockNumber
         event_listener()
 
-        daemon = Daemon.get_solo()
+        daemon = Daemon.get_default_daemon()
         self.assertEqual(daemon.block_number, current, 'Task run successfully')
         self.assertEqual(daemon.last_error_block_number, 0, 'No errors during task execution')
 
@@ -339,8 +343,9 @@ class EventListenerTestCase(TestCase):
 
         """
         current = self.web3.eth.blockNumber
+        daemon = Daemon.get_default_daemon()
         event_listener()
-        daemon = Daemon.get_solo()
+        daemon.refresh_from_db()
 
         self.assertEqual(daemon.block_number, current, 'Task run successfully')
         self.assertEqual(daemon.last_error_block_number, 0, 'No errors during task execution')
@@ -353,8 +358,11 @@ class EventListenerTestCase(TestCase):
         tx_hash = self.bank_contract.functions.deposit(). \
             transact({'from': self.web3.eth.accounts[0], 'value': deposit_value})
 
+        logger = logging.getLogger('django_ethereum_events.tasks')
+        logger.disabled = True
         with patch.object(EventListener, 'get_block_logs', patched_get_block_logs):
             event_listener()
+        logger.disabled = False
 
         daemon.refresh_from_db()
         self.assertEqual(daemon.block_number, current, 'Erroneous block was not processed')

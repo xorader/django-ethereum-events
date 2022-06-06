@@ -1,11 +1,14 @@
 from django.contrib import admin
 
-from solo.admin import SingletonModelAdmin
-
 from .forms import MonitoredEventForm
 from .models import Daemon, FailedEventLog, MonitoredEvent
 
-admin.site.register(Daemon, SingletonModelAdmin)
+
+class DaemonAdmin(admin.ModelAdmin):
+    pass
+
+
+admin.site.register(Daemon, DaemonAdmin)
 
 
 class MonitoredEventAdmin(admin.ModelAdmin):

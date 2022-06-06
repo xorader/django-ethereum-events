@@ -1,6 +1,6 @@
 from django.core.management import BaseCommand
 
-from django_ethereum_events.models import Daemon
+from django_ethereum_events.models import Daemon, DEFAULT_BLOCKCHAIN_ID
 
 
 class Command(BaseCommand):
@@ -20,7 +20,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         block_number = options['block']
-        d = Daemon.get_solo()
+        d = Daemon.objects.get(blockchain_id=DEFAULT_BLOCKCHAIN_ID)
         d.block_number = block_number
         d.last_error_block_number = 0
         d.save()

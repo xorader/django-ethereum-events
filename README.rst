@@ -45,8 +45,6 @@ Installation
 
         INSTALLED_APPS += ('django_ethereum_events')
 
-    if you are using the **admin backend**, also include ``solo`` in your ``INSTALLED_APPS``.
-
 3.  Make necessary migrations
 
     .. code-block:: python
@@ -81,7 +79,8 @@ Usage
             event_name=event,
             contract_address=contract_address,
             contract_abi=contract_abi,
-            event_receiver=event_receiver
+            event_receiver=event_receiver,
+            blockchain_id=blockchain_id  # optional, default: 1
         )
 
 3.  Create an appropriate event receiver
@@ -91,10 +90,11 @@ Usage
         from django_ethereum_events.chainevents import AbstractEventReceiver
 
         class CustomEventReceiver(AbsractEventReceiver):
-            def save(self, decoded_event):
+            def save(self, decoded_event, blockchain_id):
                 # custom logic goes here
 
     The ``decoded_event`` parameter is the decoded log as provided from `web3.utils.events.get_event_data`_ method.
+    The ``blockchain_id`` parameter corresponds to the value of the `daemon.blockchain_id` for multi blockchains supporting.
 
     .. _`web3.utils.events.get_event_data`: https://github.com/ethereum/web3.py/blob/v5.5.0/web3/_utils/events.py#L198
 

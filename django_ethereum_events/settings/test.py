@@ -14,7 +14,6 @@ DEBUG = True
 
 INSTALLED_APPS = (
     'django_ethereum_events',
-    'solo'
 )
 
 CACHES = {

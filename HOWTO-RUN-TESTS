@@ -1,0 +1,10 @@
+
+$ python -m venv venv
+$ source ./venv/bin/activate
+$ pip install --editable .
+ # Installs 'eth-tester[py-evm]==v0.2.0-beta.2' with 'Django<3.2' version
+ # The 'pip install --editable .[tester]' does not workes. :(
+$ pip uninstall -y Django
+$ python setup.py develop easy_install django-ethereum-events[tester]
+$ python runtests.py
+$ deactivate

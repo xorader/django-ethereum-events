@@ -15,19 +15,34 @@ from .web3_service import Web3Service
 
 logger = logging.getLogger(__name__)
 
-
 class EventListener:
     """Event Listener class."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, daemon=None, *args, **kwargs):
         super(EventListener, self).__init__()
-        self.daemon = Daemon.get_solo()
+        if daemon is None:
+            self.daemon = Daemon.get_default_daemon()
+        else:
+            self.daemon = daemon
         self.decoder = Decoder(block_number=self.daemon.block_number + 1)
-        self.web3 = Web3Service(*args, **kwargs).web3
+        self.web3 = Web3Service(self.daemon, *args, **kwargs).web3
+
+        if self.daemon.ethereum_logs_batch_size:
+            self.ethereum_logs_batch_size = self.daemon.ethereum_logs_batch_size
+        else:
+            self.ethereum_logs_batch_size = getattr(settings, "ETHEREUM_LOGS_BATCH_SIZE", 10000)
+        if self.daemon.ethereum_logs_filter_available is not None:
+            self.ethereum_logs_filter_available = self.daemon.ethereum_logs_filter_available
+        else:
+            self.ethereum_logs_filter_available = getattr(settings, "ETHEREUM_LOGS_FILTER_AVAILABLE", False)
+        if self.daemon.ethereum_logs_filter_getlogs is not None:
+            self.ethereum_logs_filter_getlogs = self.daemon.ethereum_logs_filter_getlogs
+        else:
+            self.ethereum_logs_filter_getlogs = getattr(settings, "ETHEREUM_LOGS_FILTER_GETLOGS", False)
 
     def _get_block_range(self):
         current = self.web3.eth.blockNumber
-        step = getattr(settings, "ETHEREUM_LOGS_BATCH_SIZE", 10000)
+        step = self.ethereum_logs_batch_size
         if self.daemon.block_number < current:
             start = self.daemon.block_number + 1
             return start, min(current, start + step)
@@ -110,7 +125,7 @@ class EventListener:
 
             try:
                 event_receiver_cls = import_string(event_receiver)
-                event_receiver_cls().save(decoded_event=decoded_log)
+                event_receiver_cls().save(decoded_event=decoded_log, blockchain_id=self.daemon.blockchain_id)
             except Exception:
                 # Save the event information that caused the exception
                 failed_event = FailedEventLog.objects.create(
@@ -142,7 +157,7 @@ class EventListener:
 
     def execute(self):
         """Program loop, does all the underlying work."""
-        if getattr(settings, "ETHEREUM_LOGS_FILTER_AVAILABLE", False):
+        if self.ethereum_logs_filter_available:
             self._execute_using_filters()
         else:
             self._execute_iterating_all_blocks()
@@ -161,7 +176,7 @@ class EventListener:
                 "fromBlock": start,
                 "toBlock": end,
             }
-            if getattr(settings, "ETHEREUM_LOGS_FILTER_GETLOGS", False):
+            if self.ethereum_logs_filter_getlogs:
                 all_logs.extend(self.web3.eth.getLogs(FilterParams(log_filter)))
             else:
                 all_logs.extend(self.web3.eth.filter(log_filter).get_all_entries())

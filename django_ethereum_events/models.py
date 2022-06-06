@@ -7,25 +7,41 @@ try:
 except ImportError:
     from django.utils.translation import gettext_lazy as _
 
-from solo.models import SingletonModel
-
 CACHE_UPDATE_KEY = '_django_ethereum_events_update_required'
+DEFAULT_BLOCKCHAIN_ID = 1
 
 
-class Daemon(SingletonModel):
+class Daemon(models.Model):
     """Model responsible for storing blockchain related information."""
 
+    blockchain_id = models.PositiveSmallIntegerField(default=DEFAULT_BLOCKCHAIN_ID, primary_key=True)
+    blockchain_name = models.CharField(max_length=256, null=True, blank=True)
     block_number = models.IntegerField(default=0, help_text=_('Last block processed'))
     last_error_block_number = models.IntegerField(default=0)
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
+    ethereum_node_timeout = models.PositiveSmallIntegerField(null=True, blank=True)
+    ethereum_node_uri = models.CharField(max_length=256, null=True, blank=True)
+    ethereum_geth_poa = models.BooleanField(null=True, blank=True)
+    ethereum_logs_batch_size = models.PositiveSmallIntegerField(null=True, blank=True)
+    ethereum_logs_filter_available = models.BooleanField(null=True, blank=True)
+    ethereum_logs_filter_getlogs = models.BooleanField(null=True, blank=True)
+
+    @classmethod
+    def get_default_daemon(cls):
+        try:
+            daemon = Daemon.objects.get(blockchain_id=DEFAULT_BLOCKCHAIN_ID)
+        except Daemon.DoesNotExist:
+            daemon = Daemon(blockchain_id=DEFAULT_BLOCKCHAIN_ID)
+            daemon.save()
+        return daemon
 
 
 class EventManager(models.Manager):
     """Model manager for MonitoredEvent model."""
 
     @staticmethod
-    def register_event(event_name, contract_address, contract_abi, event_receiver):
+    def register_event(event_name, contract_address, contract_abi, event_receiver, blockchain_id=DEFAULT_BLOCKCHAIN_ID):
         """Helper function that creates a new MonitoredEvent.
 
         Args:
@@ -33,6 +49,7 @@ class EventManager(models.Manager):
             contract_address (str): the address of the contract emitting the event (hexstring)
             contract_abi (obj): the contract abi either as `str` or `dict`
             event_receiver (str): module in which the event information is passed, must be importable
+            blockchain_id (int): blockchain id for multi blockains supporting (default: 1)
 
         Returns:
             The created MonitoredEvent object
@@ -45,7 +62,8 @@ class EventManager(models.Manager):
             'name': event_name,
             'contract_address': contract_address,
             'event_receiver': event_receiver,
-            'contract_abi': contract_abi
+            'contract_abi': contract_abi,
+            'blockchain_id': blockchain_id
         })
 
         if form.is_valid():
@@ -58,6 +76,7 @@ class EventManager(models.Manager):
 class MonitoredEvent(models.Model):
     """Holds the events that are currently monitored on the blockchain."""
 
+    daemon = models.ForeignKey(Daemon, default=DEFAULT_BLOCKCHAIN_ID, on_delete=models.CASCADE)
     name = models.CharField(max_length=256)
     contract_address = models.CharField(max_length=42, validators=[MinLengthValidator(42)])
     event_abi = models.TextField()
@@ -74,7 +93,7 @@ class MonitoredEvent(models.Model):
         unique_together = ('topic', 'contract_address')
 
     def __str__(self):
-        return '{0} at {1}'.format(self.name, self.contract_address)
+        return '[{0}] {1} at {2}'.format(self.daemon_id, self.name, self.contract_address)
 
     @property
     def event_abi_parsed(self):

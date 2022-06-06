@@ -21,7 +21,6 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
 
     'django_ethereum_events',
-    'solo',
     'dev'
 )
 

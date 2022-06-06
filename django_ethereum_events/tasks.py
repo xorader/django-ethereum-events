@@ -6,6 +6,7 @@ from celery import shared_task
 from django.core.cache import cache
 
 from .event_listener import EventListener
+from .models import Daemon
 
 
 LOCK_KEY = '_django_ethereum_events_cache_lock'
@@ -47,14 +48,19 @@ def event_listener():
     """
     with cache_lock(LOCK_KEY, LOCK_VALUE) as acquired:
         if acquired:
-            listener = EventListener()
-            try:
-                listener.execute()
-            except Exception:
-                logger.exception('Exception while running event listener task', exc_info=True)
-                daemon = listener.daemon
-                last_processed_block = daemon.block_number
-                daemon.last_error_block_number = last_processed_block + 1
-                daemon.save()
+            for daemon in Daemon.objects.all():
+                listener = EventListener(daemon)
+                try:
+                    listener.execute()
+                except Exception:
+                    logger.exception(
+                        'Exception while running event listener task for "{0}" daemon'.format(
+                            daemon
+                        ),
+                        exc_info=True
+                    )
+                    last_processed_block = daemon.block_number
+                    daemon.last_error_block_number = last_processed_block + 1
+                    daemon.save()
         else:
             logger.info('Event listener is already running. Skipping execution.')

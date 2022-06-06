@@ -8,6 +8,8 @@ from hexbytes import HexBytes
 
 from web3.datastructures import AttributeDict
 
+from .models import Daemon
+
 
 def get_event_abi(abi, event_name):
     """Helper function that extracts the event abi from the given abi.
@@ -51,15 +53,19 @@ def refresh_cache_update_value(update_required=False):
 
 
 class Singleton(type):
-    """Simple singleton implementation."""
+    """Singleton with multi daemons implementation."""
 
     _instances = {}
 
-    def __call__(cls, *args, **kwargs):  # noqa: N805
+    def __call__(cls, daemon=None, *args, **kwargs):  # noqa: N805
         if cls not in cls._instances:
-            cls._instances[cls] = super(
-                Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
+            cls._instances[cls] = {}
+        if daemon is None:
+            daemon = Daemon.get_default_daemon()
+        if daemon.blockchain_id not in cls._instances[cls]:
+            cls._instances[cls][daemon.blockchain_id] = super(
+                Singleton, cls).__call__(daemon, *args, **kwargs)
+        return cls._instances[cls][daemon.blockchain_id]
 
 
 class HexJsonEncoder(json.JSONEncoder):

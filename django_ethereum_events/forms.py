@@ -14,7 +14,7 @@ from eth_utils import add_0x_prefix, event_abi_to_log_topic, is_hex_address
 from web3 import Web3
 
 from .chainevents import AbstractEventReceiver
-from .models import MonitoredEvent
+from .models import MonitoredEvent, Daemon
 from .utils import get_event_abi
 
 
@@ -23,6 +23,7 @@ class MonitoredEventForm(forms.ModelForm):
     contract_address = forms.CharField(max_length=42, min_length=42)
     contract_abi = forms.Field(widget=widgets.Textarea)
     event_receiver = forms.CharField(max_length=256)
+    blockchain_id = forms.IntegerField()
 
     class Meta:
         model = MonitoredEvent
@@ -70,6 +71,13 @@ class MonitoredEventForm(forms.ModelForm):
 
         name = cleaned_data.get('name')
         abi = cleaned_data.get('contract_abi')
+        blockchain_id = cleaned_data.get('blockchain_id')
+
+        try:
+            self._daemon = Daemon.objects.get(blockchain_id=blockchain_id)
+        except Daemon.DoesNotExist:
+            self._daemon = Daemon(blockchain_id=blockchain_id)
+            self._daemon.save()
 
         try:
             self._event_abi = get_event_abi(abi, name)
@@ -79,6 +87,7 @@ class MonitoredEventForm(forms.ModelForm):
     def save(self, commit=True):
         event = super(MonitoredEventForm, self).save(commit=False)  # event is not ready to be saved
 
+        event.daemon = self._daemon
         topic = event_abi_to_log_topic(self._event_abi)
         event.topic = add_0x_prefix(topic.hex())
         event.event_abi = json.dumps(self._event_abi)

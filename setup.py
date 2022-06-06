@@ -10,15 +10,16 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 extras_require = {
     'tester': [
-        'eth-tester[py-evm]==v0.2.0-beta.2'
+        'Django>=1.11,<3.2',
+        'eth-tester[py-evm]==v0.2.0-beta.2',
     ],
     'dev': [
-        'tox>=1.8.0'
-        'twine>=1.13,<2'
-        'wheel'
+        'tox>=1.8.0',
+        'twine>=1.13,<2',
+        'wheel',
     ],
     'linter': [
-        'flake8==3.7.9'
+        'flake8==3.7.9',
     ]
 }
 
@@ -36,7 +37,6 @@ setup(
     install_requires=[
         'Django>=1.11',
         'celery>=3.1.25',
-        'django-solo>=1.1.0',
         'web3>=5.5.0,<6',
     ],
     extras_require=extras_require,
