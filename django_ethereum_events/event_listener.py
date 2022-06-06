@@ -24,7 +24,7 @@ class EventListener:
             self.daemon = Daemon.get_default_daemon()
         else:
             self.daemon = daemon
-        self.decoder = Decoder(block_number=self.daemon.block_number + 1)
+        self.decoder = Decoder(block_number=self.daemon.block_number + 1, blockchain_id=self.daemon.blockchain_id)
         self.web3 = Web3Service(self.daemon, *args, **kwargs).web3
 
         if self.daemon.ethereum_logs_batch_size:

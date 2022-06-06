@@ -27,6 +27,11 @@ class Daemon(models.Model):
     ethereum_logs_filter_available = models.BooleanField(null=True, blank=True)
     ethereum_logs_filter_getlogs = models.BooleanField(null=True, blank=True)
 
+    def __str__(self):
+        return 'Blockchain [{0}]{1}'.format(
+            self.blockchain_id, self.blockchain_name if self.blockchain_name else ''
+        )
+
     @classmethod
     def get_default_daemon(cls):
         try:
@@ -90,7 +95,7 @@ class MonitoredEvent(models.Model):
     class Meta:
         verbose_name = _('Monitored Event')
         verbose_name_plural = _('Monitored Events')
-        unique_together = ('topic', 'contract_address')
+        unique_together = ('daemon_id', 'topic', 'contract_address')  # does not workes for daemon ForeignKey() ?
 
     def __str__(self):
         return '[{0}] {1} at {2}'.format(self.daemon_id, self.name, self.contract_address)

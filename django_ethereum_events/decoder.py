@@ -3,7 +3,7 @@ import logging
 from web3 import Web3
 from web3._utils.events import get_event_data
 
-from django_ethereum_events.models import MonitoredEvent
+from django_ethereum_events.models import MonitoredEvent, DEFAULT_BLOCKCHAIN_ID
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,9 @@ class Decoder:
     watched_addresses = []
     topics = {}
 
-    def __init__(self, block_number, *args, **kwargs):
+    def __init__(self, block_number, blockchain_id=DEFAULT_BLOCKCHAIN_ID, *args, **kwargs):
         super(Decoder, self).__init__(*args, **kwargs)
+        self.blockchain_id = blockchain_id
         self.refresh_state(block_number)
         self.web3 = Web3()
 
@@ -37,7 +38,7 @@ class Decoder:
         self.topics.clear()
         self.monitored_events = {}  # dict (address, topic) => [monitored_event1, monitored_event2, ...]
 
-        for monitored_event in MonitoredEvent.objects.all():
+        for monitored_event in MonitoredEvent.objects.filter(daemon__blockchain_id=self.blockchain_id):
             self.monitored_events[
                 (monitored_event.contract_address, monitored_event.topic)
             ] = monitored_event
