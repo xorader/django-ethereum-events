@@ -177,7 +177,7 @@ class EventListener:
                 "toBlock": end,
             }
             if self.ethereum_logs_filter_getlogs:
-                all_logs.extend(self.web3.eth.getLogs(FilterParams(log_filter)))
+                all_logs.extend(self.web3.eth.get_logs(FilterParams(log_filter)))
             else:
                 all_logs.extend(self.web3.eth.filter(log_filter).get_all_entries())
 
